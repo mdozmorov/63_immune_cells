@@ -3,10 +3,10 @@ library(annotables)
 # grch37
 
 # Matrix of read counts
-mtx <- read.table("counts.txt", sep="\t", header=T, as.is = T)
+mtx <- read.table("data/counts.txt.gz", sep="\t", header=T, as.is = T)
 colnames(mtx) <- sub(".bam", "", colnames(mtx)) # Remove '.bam' suffix
 # Sample annotations
-annot <- read.table("E-MTAB-2319.sdrf.txt", sep="\t", header = T, as.is = T)
+annot <- read.table("data/E-MTAB-2319.sdrf.txt", sep="\t", header = T, as.is = T)
 
 # Textual information about genes
 mtx.txt <- mtx[, 1:6]
