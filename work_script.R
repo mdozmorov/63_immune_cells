@@ -1,5 +1,6 @@
 library(dplyr)
 library(annotables)
+options(stringsAsFactors = FALSE)
 # grch37
 
 # Matrix of read counts
@@ -32,3 +33,31 @@ write.table(mtx.txt, gz1, sep="\t", quote = F, col.names = NA)
 close(gz1)
 write.table(mtx.annot, "results/mtx.annot.txt", sep="\t", quote = F, col.names = NA)
 
+## Explore Treg signature
+mtx.expr <- limma::normalizeQuantiles(log2(mtx.expr + 1))
+mtx.annot_selected <- mtx.annot$SampleID[ grep("Treg", mtx.annot$Characteristics.cell.type., ignore.case = TRUE)]
+mtx.expr_selected  <- mtx.expr[, colnames(mtx.expr) %in% mtx.annot_selected]
+boxplot(mtx.expr_selected)
+# Exclude one sample
+mtx.annot_selected <- mtx.annot_selected[ mtx.annot_selected != "ERR431589"]
+mtx.expr_selected  <- mtx.expr_selected[, colnames(mtx.expr_selected) != "ERR431589"]
+all.equal(mtx.annot_selected, colnames(mtx.expr_selected))
+# Summarize Treg signature by median across samples
+signature_Treg <- apply(mtx.expr_selected, 1, mean)
+signature_Treg <- signature_Treg[ signature_Treg > 0]
+
+library(biomaRt)
+mart <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+genes<-getBM(attributes=c('ensembl_gene_id','hgnc_symbol','description'), filters='ensembl_gene_id', values=names(signature_Treg), mart=mart, uniqueRows=T)
+
+dim(genes)
+length(signature_Treg)
+length(setdiff(names(signature_Treg), genes$ensembl_gene_id))
+
+signature_Treg_mtx <- left_join(data.frame(ensembl_gene_id = names(signature_Treg),
+                                           expression      = signature_Treg), genes)
+signature_Treg_mtx <- signature_Treg_mtx[signature_Treg_mtx$hgnc_symbol != "", ]
+signature_Treg_mtx <- signature_Treg_mtx[order(signature_Treg_mtx$expression, decreasing = T), ]
+
+which(signature_Treg_mtx$hgnc_symbol == "FOXP3")
+writeLines(signature_Treg_mtx$hgnc_symbol[1:500], "results/Treg_500.txt")
